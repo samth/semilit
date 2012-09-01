@@ -7,6 +7,7 @@
 % cd semilit
 % raco link .
 % raco setup semilit
+```
 
 ## Use
 
