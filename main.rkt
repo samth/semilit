@@ -23,24 +23,20 @@
      (let ([remain #f] [remain-start 0])
        (lambda (bs) 
          (define len (bytes-length bs))
-         (eprintf ">>> bs-len ~a\n" len)
          (let outer ()
            (cond [(and remain (<= (- (bytes-length remain) remain-start) len))
-                  (eprintf ">> more to go but it all fits\n")
                   (bytes-copy! bs 0 remain remain-start)
                   (begin0
                       (- (bytes-length remain) remain-start)
                     (set! remain-start 0) 
                     (set! remain #f))]
                  [remain
-                  (eprintf ">> more to go and it won't fit\n")
                   (bytes-copy! bs 0 remain remain-start (+ remain-start len))
                   (set! remain-start (+ remain-start len)) 
                   len]
                  [else
                   (let inner ()
                     (define line (read-bytes-line in))
-                    (eprintf ">>> line ~a\n" line)
                     (cond 
                       [(eof-object? line) line]
                       [(zero? (bytes-length line))
@@ -57,11 +53,15 @@
     (make-meta-reader
      'semilit
      "language path"
-     (lambda (str)
-       (let ([s (string->symbol
-                 (string-append (bytes->string/utf-8 str)
-                                "/lang/reader"))])
-         (and (module-path? s) s)))
+     (lambda (bstr)
+       (let* ([str (bytes->string/utf-8 bstr)]
+              [sym (string->symbol str)])
+         (and (module-path? sym)
+              (vector
+               ;; try submod first:
+               `(submod ,sym reader)
+               ;; fall back to /lang/reader:
+               (string->symbol (string-append str "/lang/reader"))))))
      wrap-read
      wrap-read-syntax
      (lambda (proc)
