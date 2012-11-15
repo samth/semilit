@@ -3,10 +3,7 @@
 ## Installation
 
 ```
-% git clone ....
-% cd semilit
-% raco link .
-% raco setup semilit
+% raco pkg install semilit
 ```
 
 ## Use
