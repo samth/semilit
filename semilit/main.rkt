@@ -19,7 +19,7 @@
   (define nl-byte (bytes-ref #"\n" 0))
 
   (define (filter-port in)
-    (let ([remain #f] [remain-start 0] [lines 0] [pos 0])     
+    (let ([remain #f] [remain-start 0] [lines 1] [pos 1])     
       (make-input-port 
        (cons 'semilit (object-name in))
        (lambda (bs) 
