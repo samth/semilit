@@ -19,39 +19,44 @@
   (define nl-byte (bytes-ref #"\n" 0))
 
   (define (filter-port in)
-    (let ([remain #f] [remain-start 0] [lines 1] [pos 1])     
-      (make-input-port 
+    (let ([remain #f] [remain-start 0] [lines 1] [pos 1])
+      (make-input-port
        (cons 'semilit (object-name in))
-       (lambda (bs) 
+       (lambda (bs)
          (define len (bytes-length bs))
-         (let outer ()
-           (cond [(and remain (< (- (bytes-length remain) remain-start) len))
+         (let loop ()
+           (define remaining-bytes (and remain (- (bytes-length remain) remain-start)))
+           (cond [(not remain)
+                  (define line (read-bytes-line in))
+                  (set! lines (add1 lines))
+                  (cond ;; eof
+                        [(eof-object? line) line]
+                        ;; blank line, we read a
+                        [(zero? (bytes-length line))
+                         (bytes-set! bs 0 nl-byte)
+                         (set! pos (add1 pos))
+                         1]
+                        ;; starts with >, put it in remain
+                        [(equal? (bytes-ref line 0) >-byte)
+                         (set! remain line) (set! remain-start 1)
+                         (set! pos (add1 pos))
+                         (loop)]
+                        ;; starts with something else, treat like a blank line
+                        [else
+                         (bytes-set! bs 0 nl-byte)
+                         (set! pos (+ pos 1 (bytes-length line)))
+                         1])]
+                 [(< remaining-bytes len)
                   (bytes-copy! bs 0 remain remain-start)
-                  (bytes-set! bs (sub1 len) nl-byte)
-                  (set! pos (+ pos (add1 (- (bytes-length remain) remain-start))))
-                  (begin0 (add1 (- (bytes-length remain) remain-start))
-                          (set! remain-start 0) 
-                          (set! remain #f))]
-                 [remain
-                  (bytes-copy! bs 0 remain remain-start (+ remain-start len))
-                  (set! remain-start (+ remain-start len))
-                  (set! pos (+ pos len))
-                  len]
+                  (set! pos (+ pos remaining-bytes))
+                  (set! remain #f)
+                  (set! remain-start 0)
+                  remaining-bytes]
                  [else
-                  (let inner ()
-                    (define line (read-bytes-line in))
-                    (set! lines (add1 lines))
-                    (cond 
-                      [(eof-object? line) line]
-                      [(zero? (bytes-length line))
-                       (bytes-set! bs 0 nl-byte)
-                       (set! pos (add1 pos))
-                       1]
-                      [(equal? (bytes-ref line 0) >-byte)
-                       (set! remain line) (set! remain-start 1)
-                       (set! pos (add1 pos))
-                       (outer)]
-                      [else (set! pos (+ pos 1 (bytes-length line))) (inner)]))])))
+                  (bytes-copy! bs 0 remain remain-start (+ remain-start len))
+                  (set! pos (+ pos len))
+                  (set! remain-start (+ remain-start len))
+                  len])))
        #f ;; peek
        (λ () (close-input-port in))
        #f
